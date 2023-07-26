@@ -109,7 +109,7 @@ export class CustomerService {
     }
 
     async sendMessage(maildto: CustomerMailDto): Promise<any> {
-        const messagebody = '<p>' + maildto.message + '</p>' + '<br><br><h4><b>' + maildto.s_name + '</b></h4><br><h4>' + maildto.s_email + '</h4>';
+        const messagebody = '<p>' + maildto.message + '</p>' + '<br><p><b>' + maildto.s_name + '</b><br>' + maildto.s_email + '</p>';
         await this.mailerService.sendMail({
             to: 'hasanbithto2@gmail.com',
             subject: maildto.subject,
