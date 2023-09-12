@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Put, Patch, UsePipes, ValidationPipe, Body, Param, ParseIntPipe, Req, Res, Session, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Put, Patch, UsePipes, ValidationPipe, Body, Param, ParseIntPipe, Req, Res, Session, UseGuards, HttpException, HttpStatus, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseInterceptors, } from '@nestjs/common';
 import { CustomerService } from 'src/customer/customer.service'
 import { CustomerSignUpDto, CustomerLoginDto, CustomerChangePassDto, CustomerUpdateInfoDto, CustomerMailDto } from './customer.dto';
 import { CSessionGuard } from './csession.guard';
@@ -7,6 +7,8 @@ import { WishlistService } from 'src/wishlist/wishlist.service';
 import { OrderService } from 'src/order/order.service';
 import { CartService } from 'src/cart/cart.service';
 import { OrderDto, PaymentDto } from '../order/order.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 
 
 @Controller()
@@ -18,58 +20,89 @@ export class CustomerController {
         private cartService: CartService ) {}
 
     @Get('/account')
-    @UseGuards(CSessionGuard)
-    async customerDashboard(): Promise<any> {
+    // @UseGuards(CSessionGuard)
+    async customerDashboard(@Session() session): Promise<any> {
         try {
-            return await this.customerService.customerAccDashboard();
+            console.log(session.email);
+            return session.email;
         } catch (error) {
             throw new Error(error.message);
         }
     }
     
     @Get('/account/info')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async customerAccountInfo(@Session() session): Promise<any> {
         try {
-            return await this.customerService.customerAccountInfo(session.email);
+            const result = await this.customerService.customerAccountInfo(session.email);
+            return result;
         } catch (error) {
             throw new Error(error.message);
         }
     }
 
+    // @Post('/signup')
+    // @UsePipes(new ValidationPipe())
+    // async customerSignUp(@Body() customerdto: CustomerSignUpDto): Promise<any> {
+    //     try {
+    //         if ( customerdto.password !== customerdto.confirm_password ){
+    //             return 'passwords do not match';
+    //         } else {
+    //             const msg = await this.customerService.customerSignUp(customerdto);
+    //             if (msg){
+    //                 return 'successfully signed up';
+    //             } else if (!msg){
+    //                 return 'email already exists';
+    //             }
+    //         }
+    //     } catch (error) {
+    //         throw new Error(error.message);
+    //     }
+    // }
+
     @Post('/signup')
-    @UsePipes(new ValidationPipe())
     async customerSignUp(@Body() customerdto: CustomerSignUpDto): Promise<any> {
         try {
-            if ( customerdto.password !== customerdto.confirm_password ){
-                return 'passwords do not match';
-            } else {
-                const msg = await this.customerService.customerSignUp(customerdto);
-                if (msg){
-                    return 'successfully signed up';
-                } else if (!msg){
-                    return 'email already exists';
-                }
+            const msg = await this.customerService.customerSignUp(customerdto);
+            if (msg) {
+                return 'successfully signed up';
+            } else if (!msg) {
+                return 'email already exists';
             }
         } catch (error) {
             throw new Error(error.message);
         }
     }
 
+    // @Post('/login')
+    // @UsePipes(new ValidationPipe())
+    // async customerLogin(@Body() customerdto: CustomerLoginDto, @Session() session, @Res() res): Promise<any> {
+    //     try {
+    //         const result = await this.customerService.customerLogin(customerdto);
+    //         if(result == 'login successful'){
+    //             session.email = customerdto.email;
+    //             if (session.email !== undefined){
+    //                 res.redirect('/account');
+    //             } else {
+    //                 return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'something went wrong while logging in' });
+    //             }
+    //         } else if(result == 'incorrect password' || result == 'email does not exist') {
+    //             res.send(result);
+    //         }
+    //     } catch (error) {
+    //         throw new Error(error.message);
+    //     }
+    // }
+
     @Post('/login')
-    @UsePipes(new ValidationPipe())
-    async customerLogin(@Body() customerdto: CustomerLoginDto, @Session() session, @Res() res): Promise<any> {
+    async customerLogin(@Body() customerdto: CustomerLoginDto, @Session() session): Promise<any> {
         try {
             const result = await this.customerService.customerLogin(customerdto);
-            if(result == 'login successful'){
+            if (result == 'login successful') {
                 session.email = customerdto.email;
-                if (session.email !== undefined){
-                    res.redirect('/account');
-                } else {
-                    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'something went wrong while logging in' });
-                }
-            } else if(result == 'incorrect password' || result == 'email does not exist') {
-                res.send(result);
+                return session.email;
+            } else if (result == 'incorrect password' || result == 'email does not exist') {
+                return result;
             }
         } catch (error) {
             throw new Error(error.message);
@@ -77,7 +110,7 @@ export class CustomerController {
     }
 
     @Get('/account/logout')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async customerLogout(@Session() session): Promise<any> {
         try {
             if(await session.destroy()) {
@@ -92,12 +125,14 @@ export class CustomerController {
     }
 
     @Patch('/account/change-pass')
-    @UsePipes(new ValidationPipe())
-    @UseGuards(CSessionGuard)
+    // @UsePipes(new ValidationPipe())
+    // @UseGuards(CSessionGuard)
     async customerChangePass(@Body() customerdto: CustomerChangePassDto, @Session() session): Promise<any> {
         try {
             const result = await this.customerService.customerChangePass(customerdto, session.email);
-            if(result == 'new passwords do not match' || result == 'current password is incorrect' || result == 'password changed successfully' || result == 'new password cannot be same as old'){
+            if(result == 'current password is incorrect' || result == 'new password cannot be same as current'){
+                return result;
+            } else if (result == 'password changed') {
                 return result;
             } else {
                 throw new HttpException("something went wrong while changing password", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -108,8 +143,8 @@ export class CustomerController {
     }
 
     @Patch('/account/info/update')
-    @UsePipes(new ValidationPipe())
-    @UseGuards(CSessionGuard)
+    // @UsePipes(new ValidationPipe())
+    // @UseGuards(CSessionGuard)
     async updateCustomerInfo(@Body() customerdto: CustomerUpdateInfoDto, @Session() session): Promise<any> {
         try {
             const result = await this.customerService.updateCustomerInfo(customerdto, session.email);
@@ -117,7 +152,7 @@ export class CustomerController {
                 return result;
             } else if(result == 'acc updated with new email') {
                 session.email = customerdto.email;
-                return 'account updated successfully';
+                return session.email;
             } else if(result == 'account updated successfully') {
                 return result;
             } else {
@@ -128,7 +163,7 @@ export class CustomerController {
         }
     }
 
-    @Get('/home')
+    @Get()
     async viewAllProducts(): Promise<any> {
         try {
             return await this.productService.viewAllProducts();
@@ -156,7 +191,7 @@ export class CustomerController {
     }
 
     @Post('/account/wishlist/add/:id')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async addItemsToWishlist(@Param('id', ParseIntPipe) id: number, @Session() session): Promise<any> {
         try {
             return await this.wishlistService.addToWishlist(session.email, id);
@@ -165,8 +200,18 @@ export class CustomerController {
         }
     }
 
+    @Get('/account/wishlist/check/:id')
+    // @UseGuards(CSessionGuard)
+    async checkItemsfromWishlist(@Param('id', ParseIntPipe) id: number, @Session() session): Promise<any> {
+        try {
+            return await this.wishlistService.checkfromWishlist(session.email, id);
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    }
+
     @Get('/account/wishlist')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async viewWishlist(@Session() session): Promise<any> {
         try {
             return await this.wishlistService.viewWishlist(session.email);
@@ -177,15 +222,15 @@ export class CustomerController {
 
 
     @Delete('/account/wishlist/remove/:id')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async removeItemsFromWishlist(@Param('id', ParseIntPipe) id: number, @Session() session): Promise<any> {
         try {
-            const result = await this.wishlistService.removeFromWishlist(session.email, id);
-            if(result){
-                return 'item removed from wishlist';
-            } else if (!result){
-                return 'item not found in wishlist';
-            }
+            return await this.wishlistService.removeFromWishlist(session.email, id);
+            // if(result){
+            //     return 'item removed from wishlist';
+            // } else if (!result){
+            //     return 'item not found in wishlist';
+            // }
         } catch (error) {
             throw new Error(error.message);
         }
@@ -193,7 +238,7 @@ export class CustomerController {
 
 
     @Post('/cart/add/:id')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async addItemsToCart(@Param('id', ParseIntPipe) id: number, @Body('quantity') quantity: number,  @Session() session): Promise<any> {
         try {
             return await this.cartService.addToCart(session.email, id, quantity);
@@ -202,8 +247,18 @@ export class CustomerController {
         }
     }
 
+    @Patch('/cart/update/:id')
+    // @UseGuards(CSessionGuard)
+    async updateCartItem(@Param('id', ParseIntPipe) id: number, @Body('quantity') quantity: number,  @Session() session): Promise<any> {
+        try {
+            return await this.cartService.updateCartItem(session.email, id, quantity);
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    }
+
     @Get('/cart/viewitems')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async viewCart(@Session() session): Promise<any> {
         try {
             return await this.cartService.getCartItems(session.email);
@@ -214,31 +269,31 @@ export class CustomerController {
 
 
     @Delete('/cart/remove/:id')
-    @UseGuards(CSessionGuard)
+    // @UseGuards(CSessionGuard)
     async removeItemsFromCart(@Param('id', ParseIntPipe) id: number, @Session() session): Promise<any> {
         try {
-            const result = await this.cartService.removeFromCart(session.email, id);
-            if(result){
-                return 'item removed from cart';
-            } else if (!result){
-                return 'item not found in cart';
-            }
+            return await this.cartService.removeFromCart(session.email, id);
+            // if(result){
+            //     return 'item removed from cart';
+            // } else if (!result){
+            //     return 'item not found in cart';
+            // }
         } catch (error) {
             throw new Error(error.message);
         }
     }
 
-    @Post('/checkout')
-    @UseGuards(CSessionGuard)
+    @Get('/checkout')
+    // @UseGuards(CSessionGuard)
     async checkout(@Session() session): Promise<any> {
         try {
-            const result = await this.orderService.checkoutFromCart(session.email);
-            if(result == false){
-                return 'nothing in cart to checkout';
-            } else if (typeof result === 'object') {
-                session.checkout = result;
-                return 'Item(s):\n' + result.items + '\nSubtotal: ' + result.total + ' BDT\n\n-> provide address for placing order';
-            }
+            return await this.orderService.checkoutFromCart(session.email);
+            // if(result == false){
+            //     return 'nothing in cart to checkout';
+            // } else if (typeof result === 'object') {
+            //     session.checkout = result;
+            //     return 'Subtotal: ' + result.total + ' BDT\n\n-> provide address for placing order';
+            // }
         } catch (error) {
             throw new Error(error.message);
         }
@@ -311,5 +366,14 @@ export class CustomerController {
     // deleteCustomer(@Param('id', ParseIntPipe) id: number): object {
     //     return this.customerService.deleteCustomer(id);
     // }
+
+    @Get('/productimages/:name')
+    async getImage(@Param('name') name: string, @Res() res): Promise<any> {
+        try {
+            res.sendFile(name, { root: './uploads/products' })
+        } catch (error) {
+            throw new Error(error.message);
+        }
+    }
 
 }

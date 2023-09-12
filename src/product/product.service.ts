@@ -13,8 +13,9 @@ export class ProductService {
         private productRepo: Repository<ProductEntity>
     ) {}
 
-    async addProduct(product: ProductDto): Promise<any> {
+    async addProduct(product: ProductDto, pimage: string): Promise<any> {
         product.p_name = product.p_name.toLowerCase().trim();
+        product.p_image = pimage;
         const data = await this.productRepo.findOneBy({p_name: product.p_name});
         if(data) {
             return false;
@@ -26,7 +27,9 @@ export class ProductService {
     }
 
     async updateProduct(pid: number, updateDto: UpdateProductDto): Promise<any> {
-        updateDto.p_name = updateDto.p_name.toLowerCase().trim();
+        if (updateDto.p_name) {
+            updateDto.p_name = updateDto.p_name.toLowerCase().trim();
+        }
         const data = await this.productRepo.findOneBy({p_id: pid});
         if(data) {
             await this.productRepo.update(data.p_id, updateDto);
@@ -55,7 +58,7 @@ export class ProductService {
         // .limit(3);
         // return await query.getMany();
         return await this.productRepo.find({
-            select: ['p_name', 'p_price', 'p_description', 'p_category'],
+            // select: ['p_id', 'p_name', 'p_price', 'p_description', 'p_category'],
             order: { p_category: 'ASC' },
         });
     }
@@ -63,7 +66,7 @@ export class ProductService {
     async viewProductsByCategory(category: string): Promise<any> {
         const query = this.productRepo
         .createQueryBuilder('product')
-        .select(['product.p_name', 'product.p_price', 'product.p_description'])
+        .select(['product.p_id', 'product.p_name', 'product.p_price', 'product.p_description', 'product.p_image', 'product.p_stock'])
         .where('product.p_category = :category', { category: category })
         .orderBy('product.p_price', 'ASC');
         return await query.getMany();
@@ -72,7 +75,7 @@ export class ProductService {
     async viewProductByID(productid: number): Promise<any> {
         const query = this.productRepo
         .createQueryBuilder('product')
-        .select(['product.p_name', 'product.p_price', 'product.p_description', 'product.p_category'])
+        .select(['product.p_id', 'product.p_name', 'product.p_price', 'product.p_description', 'product.p_image', 'product.p_stock'])
         .where('product.p_id = :productid', { productid: productid });
         return await query.getOne();
     }

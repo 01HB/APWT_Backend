@@ -27,11 +27,16 @@ export class CustomerService {
     }
 
     async customerAccountInfo(email: string): Promise<CustomerEntity> {
-        const entry = await this.customerRepo
-            .createQueryBuilder('customer')
-            .select(['customer.name', 'customer.email', 'customer.contact', 'customer.gender', 'customer.address', 'customer.photo',])
-            .where('customer.email = :email', { email })
-            .getOne();
+        const entry = await this.customerRepo.findOne({
+            select: ['name', 'email', 'contact', 'gender', 'address', 'photo'],
+            where: { email: email },
+        });
+
+            // .createQueryBuilder('customer')
+            // .select(['customer.name', 'customer.email', 'customer.contact', 'customer.gender', 'customer.address', 'customer.photo',])
+            // .where('customer.email = :email', { email })
+            // .getOne();
+
         return entry;
     }
 
@@ -67,22 +72,17 @@ export class CustomerService {
     }
 
     async customerChangePass(customer: CustomerChangePassDto, email: string): Promise<any> {
-        const data = await this.customerRepo.findOneBy({email: email});
+        const data = await this.customerRepo.findOneBy({ email: email });
         const isMatch = await bcrypt.compare(customer.password, data.password);
-        if(isMatch) {
-            if ( customer.password === customer.new_password ) {
-                return 'new password cannot be same as old';
-            } 
+        if (isMatch) {
+            if (customer.password === customer.new_password) {
+                return 'new password cannot be same as current';
+            }
             else {
-                if(customer.new_password !== customer.confirm_password) {
-                    return 'new passwords do not match';
-                }
-                else {
-                    const salt = await bcrypt.genSalt();
-                    customer.new_password = await bcrypt.hash(customer.new_password, salt);
-                    await this.customerRepo.update(data.id, {password: customer.new_password});
-                    return 'password changed successfully';
-                }
+                const salt = await bcrypt.genSalt();
+                customer.new_password = await bcrypt.hash(customer.new_password, salt);
+                await this.customerRepo.update(data.id, { password: customer.new_password });
+                return 'password changed';
             }
         } else {
             return 'current password is incorrect';
@@ -92,7 +92,7 @@ export class CustomerService {
     async updateCustomerInfo(customer: CustomerUpdateInfoDto, email: string): Promise<any> {
         const data = await this.customerRepo.findOneBy({email: email});
         const newcustomer = Object.fromEntries(
-            Object.entries(customer).filter(([key, val]) => val !== null && val !== undefined && val.trim() !== '')
+            Object.entries(customer).filter(([key, val]) => val !== null && val !== undefined)
         );
         if('email' in newcustomer) {
             const check = await this.customerRepo.findOneBy({email: newcustomer.email});

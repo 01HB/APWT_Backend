@@ -52,6 +52,19 @@ export class CartService {
         }
     }
 
+    async updateCartItem(email: string, pid: number, quantity: number): Promise<any> {
+        const customer_data = await this.customerRepo.findOneBy({email: email});
+        const cidata = await this.cartItemRepo.findOne({
+            where: { ci_product_id: pid, customer: customer_data },
+        });
+        if(cidata) {
+            await this.cartItemRepo.update(cidata.ci_id, {ci_quantity: quantity, ci_total: cidata.ci_price * quantity});
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     async removeFromCart(email: string, pid: number): Promise<any> {
         const customer_data = await this.customerRepo.findOneBy({email: email});
         const data = await this.cartItemRepo.findOne({

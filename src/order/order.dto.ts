@@ -1,20 +1,20 @@
-import { IsNotEmpty, IsString, IsOptional, IsNumber, Matches } from "class-validator";
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsEmail, Matches } from "class-validator";
 
 export class OrderDto {
 
     @IsString()
-    @IsOptional()
-    o_status: string;
+    @IsEmail({}, {message: "invalid email address"})
+    @IsNotEmpty({message: "email is required"})
+    o_email: string;
 
     @IsString()
-    @IsOptional()
-    payment_status: string;
+    @IsNotEmpty({message: "contact is required"})
+    o_contact: string;
 
     @IsString()
     @IsNotEmpty({message: "address is required"})
     o_address: string;
     
-
 }
 
 export class PaymentDto {

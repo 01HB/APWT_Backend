@@ -26,6 +26,12 @@ export class OrderEntity {
     payment_status: string;
 
     @Column()
+    o_email: string;
+
+    @Column()
+    o_contact: string;
+
+    @Column()
     o_address: string;
 
     @ManyToOne(() => CustomerEntity, customer => customer.orders)

@@ -29,18 +29,28 @@ export class OrderService {
             where: { customer: customer_data },
         });
         if (cartData.length>0) {
-            let ItemsName = "";
-            let ItemsTotal = 0;
-            cartData.forEach(element => {
-                const { ci_name, ci_total } = element;
-                ItemsName += ci_name + ", \n";
-                ItemsTotal += ci_total;
-            });
-            const checkout = {
-                items: ItemsName,
-                total: ItemsTotal,
-            };
-            return checkout;
+            // let ItemsName = [];
+            // let ItemsImg = [];
+            // let ItemsQty = [];
+            // let ItemsTotal = [];
+            // let Total = 0;
+            // cartData.forEach(element => {
+            //     const { ci_name, ci_image, ci_quantity, ci_total } = element;
+            //     ItemsName.push(ci_name);
+            //     ItemsImg.push(ci_image);
+            //     ItemsQty.push(ci_quantity);
+            //     ItemsTotal.push(ci_total);
+            //     Total += ci_total;
+            // });
+            // const checkout = {
+            //     items: ItemsName,
+            //     images: ItemsImg,
+            //     quantity: ItemsQty,
+            //     itemtotal: ItemsTotal,
+            //     total: Total,
+            // };
+            // return checkout;
+            return cartData;
         } else {
             return false;
         }
